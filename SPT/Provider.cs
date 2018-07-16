@@ -7,6 +7,7 @@ using System.Data.OleDb;
 using System.Data;
 using System.IO;
 using System.IO.Ports;
+using System.Windows.Media.Imaging;
 
 namespace SPT
 {
@@ -119,6 +120,16 @@ namespace SPT
                 sw.Close();
                 return true;
             }
+        }
+
+        private static Uri _baseUri = new Uri("pack://application:,,,");
+        public static BitmapImage GetImage(string path)
+        {
+#if SILVERLIGHT
+            return new BitmapImage(new Uri("../"  + path, UriKind.RelativeOrAbsolute));
+#else
+            return new BitmapImage(new Uri(_baseUri, path));
+#endif
         }
 
     }

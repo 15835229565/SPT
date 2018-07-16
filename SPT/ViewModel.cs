@@ -13,10 +13,37 @@ using System.Windows.Threading;
 
 namespace SPT
 {
+
+    /// <summary>
+    /// 通信结果情况
+    /// </summary>
+    public class CommResult
+    {
+        public CommResult(DataFrame request, string rcecieve, string errMsg = "")
+        {
+            RequestFrame = request;
+            RecieveStr = rcecieve;
+            ErrMsg = errMsg;
+        }
+        /// <summary>
+        /// 此通信的请求消息体
+        /// </summary>
+        public DataFrame RequestFrame;
+        /// <summary>
+        /// 此通信接收的内容
+        /// </summary>
+        public string RecieveStr;
+        /// <summary>
+        /// 此通信的异常信息
+        /// </summary>
+        public string ErrMsg;
+    }
     public class ViewModel : INotifyPropertyChanged
     {
         public static SerialPort serialPort1 = new SerialPort();
         public static DispatcherTimer ExcuteTimer = new DispatcherTimer();
+
+        public byte DataFrameVER = 0x26;
 
         public ViewModel()
         {
@@ -147,17 +174,72 @@ namespace SPT
                 OnPropertyChanged(new PropertyChangedEventArgs("SelectedRowIndex"));
             }
         }
-        private ObservableCollection<string> listStatus = new ObservableCollection<string> { };
-        public ObservableCollection<string> ListStatus
+
+        /// <summary>
+        /// 状态列表
+        /// </summary>
+        public ObservableCollection<string> ListStatus = new ObservableCollection<string> { };
+
+        /// <summary>
+        /// 报文列表
+        /// </summary>
+        public ObservableCollection<MessageModel> ListMessage = new ObservableCollection<MessageModel> { };
+
+        #region 高压测试板校准汇总
+
+        private int zeroValue = 0;
+        /// <summary>
+        /// 零点校准值
+        /// </summary>
+        public int ZeroValue
         {
-            get { return listStatus; }
+            get { return zeroValue; }
             set
             {
-                listStatus = value;
-                OnPropertyChanged(new PropertyChangedEventArgs("ListStatus"));
+                zeroValue = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("ZeroValue"));
             }
         }
-
+        private int currentValue = 0;
+        /// <summary>
+        /// 电流校准值
+        /// </summary>
+        public int CurrentValue
+        {
+            get { return currentValue; }
+            set
+            {
+                currentValue = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("CurrentValue"));
+            }
+        }
+        private int voltageValue = 0;
+        /// <summary>
+        /// 电压校准值
+        /// </summary>
+        public int VoltageValue
+        {
+            get { return voltageValue; }
+            set
+            {
+                voltageValue = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("VoltageValue"));
+            }
+        }
+        private int packIDValue = 0;
+        /// <summary>
+        /// packID校准值
+        /// </summary>
+        public int PackIDValue
+        {
+            get { return packIDValue; }
+            set
+            {
+                packIDValue = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("PackIDValue"));
+            }
+        }
+        #endregion
 
         public bool OpenPort(string ComName)
         {
@@ -189,8 +271,56 @@ namespace SPT
             EndTest(false);
         }
 
+        public string SendAndReceiveMessage(byte[] arrFrame)
+        {
+            string strReciveMsg = null;
+            if (serialPort1.IsOpen)
+            {
+                serialPort1.DiscardInBuffer();
+                string txdString = Encoding.ASCII.GetString(arrFrame);
+                serialPort1.Write(txdString);
 
+                AddMessageToList(new MessageModel(Direction.Send, GetMessage(arrFrame)));
 
+                strReciveMsg = serialPort1.ReadTo("\x0D");
+                if (strReciveMsg != string.Empty)
+                    strReciveMsg += "\x0D";
+
+                if (strReciveMsg == txdString) //-this is for RS485 Comm
+                {
+                    strReciveMsg = serialPort1.ReadTo("\x0D");
+                    if (strReciveMsg != string.Empty)
+                        strReciveMsg += "\x0D";
+                }
+                AddMessageToList(new MessageModel(Direction.Send, GetMessage(Encoding.ASCII.GetBytes(strReciveMsg))));
+            }
+            return strReciveMsg;
+        }
+        public static string GetMessage(byte[] buffer)
+        {
+            string message = string.Empty;
+            foreach (var item in buffer)
+            {
+                message += string.Format("{0:X2} ", item);
+            }
+            return message;
+        }
+        public void AddMessageToList(MessageModel mm)
+        {
+            ListMessage.Add(mm);
+            int count = ListMessage.Count;
+            if (count > 1000)
+            {
+                for (int i = 0; i < count - 1000; i++)
+                {
+                    ListMessage.RemoveAt(0);
+                }
+            }
+            if (FocusLastItem != null)
+            {
+                FocusLastItem(DataType.MessageText);
+            }
+        }
 
         public string LoadCase(string filePath)
         {
@@ -255,7 +385,7 @@ namespace SPT
         }
         public void RemoveRow()
         {
-            if (SelectedRowIndex < 0)
+            if (SelectedRowIndex < 0 || TestTable.Rows.Count == 0)
             {
                 return;
             }
@@ -332,16 +462,29 @@ namespace SPT
         {
             if (serialPort1.IsOpen)
             {
-                string[] arrStr = testDr["Content"].ToString().Trim().Split(' ');
-                byte[] arrByte = new byte[arrStr.Length];
-                for (int i = 0; i < arrStr.Length; i++)
+                var sendByte = GetSendBytes(testDr["Content"].ToString());
+                if (sendByte == null)
                 {
-                    arrByte[i] = Convert.ToByte(arrStr[i], 16);
+                    return;
                 }
                 serialPort1.DiscardInBuffer();
-                serialPort1.Write(arrByte, 0, arrByte.Length);
+                serialPort1.Write(sendByte, 0, sendByte.Length);
                 AddItemsToStatus(true, testDr["Comment"].ToString().Trim());
             }
+        }
+        public byte[] GetSendBytes(string content)
+        {
+            if (content.Trim() == string.Empty)
+            {
+                return null;
+            }
+            string[] arrStr = content.Trim().Split(' ');
+            byte[] arrByte = new byte[arrStr.Length];
+            for (int i = 0; i < arrStr.Length; i++)
+            {
+                arrByte[i] = Convert.ToByte(arrStr[i], 16);
+            }
+            return arrByte;
         }
         /// <summary>
         /// 增加状态信息到列表里
@@ -360,13 +503,20 @@ namespace SPT
             }
 
             ListStatus.Add(strStatus);
-            FocusLastItem();
+            if (FocusLastItem != null)
+            {
+                FocusLastItem(DataType.LogStatus);
+            }
         }
         /// <summary>
         /// 委托定义，用于控制界面元素
         /// </summary>
-        public delegate void ScrollToEnd();
-        public ScrollToEnd FocusLastItem = null;
+        public Action<DataType> FocusLastItem = null;
 
+    }
+    public enum DataType
+    {
+        LogStatus,
+        MessageText
     }
 }

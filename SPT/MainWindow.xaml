@@ -5,33 +5,51 @@
         xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
         xmlns:local="clr-namespace:SPT"
         xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors" 
-        xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid" x:Class="SPT.MainWindow" 
-        Title="SPT" WindowStartupLocation="CenterScreen" Icon="SPT.ico" Height="700" Width="1100" Closing="MainWindow_Closing" Loaded="MainWindow_Loaded">
-    <dx:DXWindow.Resources>
+        xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid" xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol" x:Class="SPT.MainWindow" 
+        Title="SPT" WindowStartupLocation="CenterScreen" Icon="SPT.ico" Height="600" Width="950" Closing="MainWindow_Closing" Loaded="MainWindow_Loaded">
+    <dx:DXWindow.Resources>        
+        <local:ReverseConverter x:Key="rc"/>
+        <local:ReverseGlphyConverter x:Key="rgc"/>
         <DataTemplate x:Key="rowIndicatorContentTemplate">
             <StackPanel VerticalAlignment="Stretch"
-                        HorizontalAlignment="Stretch">
-                <TextBlock Text="{Binding Path=RowHandle.Value}"
-                           TextAlignment="Center"
-                           Foreground="LightGray"/>
+        		HorizontalAlignment="Stretch">
+                <TextBlock Text="{Binding RowHandle.Value}"
+        			TextAlignment="Center"
+        			Foreground="LightGray"/>
             </StackPanel>
-        </DataTemplate>       
+        </DataTemplate>
 
+        <ControlTemplate x:Key="MessageList">
+            <StackPanel Orientation="Vertical" Margin="0,0,0,20">
+                <TextBlock Text="{Binding MessageHeader}" HorizontalAlignment="Left" MaxWidth="500" TextWrapping="Wrap" Foreground="Brown"/>
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="{Binding MessageDirection, Converter={StaticResource rgc}, ConverterParameter=Glphy}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" Width="30" Height="30"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"  Text="{Binding MessageDirection, Converter={StaticResource rgc}, ConverterParameter=Text}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBox BorderThickness="0" AcceptsReturn="True" TextWrapping="Wrap" MaxWidth="500" Background="{DynamicResource {x:Static SystemColors.ActiveCaptionBrushKey}}"
+                                     Text="{Binding MessageContent}" IsReadOnly="True" />
+                        <TextBlock Text="{Binding MessageArror}" HorizontalAlignment="Left" MaxWidth="500" TextWrapping="Wrap" Foreground="Red"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </ControlTemplate>
+        
         <ControlTemplate x:Key="rangeEditorPanel" TargetType="{x:Type ContentControl}">
             <ContentPresenter x:Name="presenter" />
             <ControlTemplate.Triggers>
-                <DataTrigger Binding="{Binding Path=Orientation, ElementName=editor}" Value="Horizontal">
+                <DataTrigger Binding="{Binding Orientation, ElementName=editor}" Value="Horizontal">
                     <Setter Property="MaxWidth" Value="400" TargetName="presenter" />
                     <Setter Property="MaxHeight" Value="50" TargetName="presenter" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Path=Orientation, ElementName=editor}" Value="Vertical">
+                <DataTrigger Binding="{Binding Orientation, ElementName=editor}" Value="Vertical">
                     <Setter Property="MaxWidth" Value="50" TargetName="presenter" />
                     <Setter Property="MaxHeight" Value="400" TargetName="presenter" />
                 </DataTrigger>
             </ControlTemplate.Triggers>
-        </ControlTemplate>
-
-        <local:ReverseConverter x:Key="rc"></local:ReverseConverter>
+        </ControlTemplate>        
     </dx:DXWindow.Resources>
 
     <dx:DXWindow.CommandBindings>
@@ -41,140 +59,237 @@
         <CommandBinding Command="local:MainWindow.ExportCase" CanExecute="ExportCase_CanExecute" Executed="ExportCase_Executed"/>
         <CommandBinding Command="local:MainWindow.ExitApp" CanExecute="ExitApp_CanExecute" Executed="ExitApp_Executed"/>
         <CommandBinding Command="local:MainWindow.PortSet" CanExecute="PortSet_CanExecute" Executed="PortSet_Executed"/>
+        <CommandBinding Command="local:MainWindow.SendMessageCommand" CanExecute="SendMessageCommand_CanExecute" Executed="SendMessageCommand_Executed"/>
     </dx:DXWindow.CommandBindings>
     <DockPanel>
         <dxb:MainMenuControl DockPanel.Dock="Top" AllowCustomizationMenu="False" AllowRename="False">
             <dxb:BarSubItem Content="文件(F)">
                 <dxb:BarButtonItem Content="加载案例" Command="local:MainWindow.LoadNewCase"
-                                   IsEnabled="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Select}"
-                                       Glyph="{dx:DXImage Image=Open2_16x16.png}" />
+					IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}"
+					Glyph="{dx:DXImage Image=Open2_16x16.png}" />
                 <dxb:BarSubItem Content="保存" Glyph="{dx:DXImage Image=Save_16x16.png}">
                     <dxb:BarButtonItem Content="案例" Command="local:MainWindow.ExportCase" CommandParameter="Case"
-                                       Glyph="{dx:DXImage Image=ExportToCSV_16x16.png}"/>
+						Glyph="{dx:DXImage Image=ExportToCSV_16x16.png}"/>
                     <dxb:BarButtonItem Content="Log信息" Command="local:MainWindow.ExportCase" CommandParameter="Log"
-                                       Glyph="{dx:DXImage Image=ExportToTXT_16x16.png}"/>
+						Glyph="{dx:DXImage Image=ExportToTXT_16x16.png}"/>
                 </dxb:BarSubItem>
                 <dxb:BarButtonItem Content="退出" Command="local:MainWindow.ExitApp"
-                                       Glyph="{dx:DXImage Image=Close_16x16.png}"/>
+					Glyph="{dx:DXImage Image=Close_16x16.png}"/>
             </dxb:BarSubItem>
             <dxb:BarSubItem Content="设置(S)">
-                <dxb:BarButtonItem Content="端口" Command="local:MainWindow.PortSet"  IsEnabled="{Binding ElementName=OpenPort, Path=IsChecked, Converter={StaticResource rc}, ConverterParameter=PortSet}"
-                                       Glyph="{dx:DXImage Image=GroupFieldCollection_16x16.png}"/>
+                <dxb:BarButtonItem Content="端口" Command="local:MainWindow.PortSet"  IsEnabled="{Binding IsChecked, ConverterParameter=PortSet, Converter={StaticResource rc}, ElementName=OpenPort}"
+					Glyph="{dx:DXImage Image=GroupFieldCollection_16x16.png}"/>
             </dxb:BarSubItem>
             <dxb:BarSubItem Content="帮助(H)">
                 <dxb:BarButtonItem Content="关于"
-                                       Glyph="{dx:DXImage Image=BOCountry_16x16.png}"/>
+					Glyph="{dx:DXImage Image=BOCountry_16x16.png}"/>
             </dxb:BarSubItem>
         </dxb:MainMenuControl>
 
         <StackPanel DockPanel.Dock="Top" Height="35" Orientation="Horizontal">
             <TextBlock Text="端口：" VerticalAlignment="Center" Margin="10,0,0,0"/>
-            <ComboBox x:Name="portComboBox" IsEnabled="{Binding ElementName=OpenPort, Path=IsChecked, Converter={StaticResource rc}, ConverterParameter=Port}" DropDownOpened="portComboBox_DropDownOpened" Width="100" VerticalAlignment="Center"></ComboBox>
+            <ComboBox x:Name="portComboBox" IsEnabled="{Binding IsChecked, ConverterParameter=Port, Converter={StaticResource rc}, ElementName=OpenPort}" DropDownOpened="portComboBox_DropDownOpened" Width="100" VerticalAlignment="Center"/>
             <TextBlock Text="波特率：" VerticalAlignment="Center" Margin="20,0,0,0"/>
-            <ComboBox x:Name="baudComboBox" SelectedItem="{Binding BaudRate}" IsEnabled="{Binding ElementName=OpenPort, Path=IsChecked, Converter={StaticResource rc}, ConverterParameter=Port}" Width="100" VerticalAlignment="Center"></ComboBox>
+            <ComboBox x:Name="baudComboBox" SelectedItem="{Binding BaudRate}" IsEnabled="{Binding IsChecked, ConverterParameter=Port, Converter={StaticResource rc}, ElementName=OpenPort}" Width="100" VerticalAlignment="Center"/>
             <dxe:CheckEdit x:Name="OpenPort" ToolTip="打开串口" Checked="OpenPort_Checked" Unchecked="OpenPort_Unchecked" Height="30" VerticalAlignment="Center" Style="{StaticResource slider}" Width="120" Margin="20,0,24,0" />
 
-            <dx:SimpleButton Content="添加行" IsEnabled="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Select}"
-                             Glyph="{dx:DXImage Image=InsertRows_16x16.png}"  
-                             VerticalAlignment="Center" Margin="20,0,0,0" ToolTip="插入到选中行之上" Click="Add_Click"></dx:SimpleButton>
-            <dx:SimpleButton Content="删除行" IsEnabled="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Select}"
-                             Glyph="{dx:DXImage Image=InsertCells_16x16.png}"
-                             VerticalAlignment="Center" Margin="5,0,0,0" ToolTip="删除选中行"  Click="Remove_Click"></dx:SimpleButton>
+            <dx:SimpleButton x:Name="addRowButton" Content="添加行" IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}"
+				Glyph="{dx:DXImage Image=InsertRows_16x16.png}"  
+				VerticalAlignment="Center" Margin="20,0,0,0" ToolTip="插入到选中行之上" Click="Add_Click"/>
+            <dx:SimpleButton x:Name="removeRowButton" Content="删除行" IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}"
+				Glyph="{dx:DXImage Image=InsertCells_16x16.png}"
+				VerticalAlignment="Center" Margin="5,0,0,0" ToolTip="删除选中行"  Click="Remove_Click"/>
+            <ComboBox Width="100" x:Name="PackComoBox" Height="20"/>
         </StackPanel>
-
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <dxg:GridControl x:Name="TestGrid" IsEnabled="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Select}"
-                             ItemsSource="{Binding TestTable}" ShowBorder="True" Grid.Row="0" AutoGenerateColumns="None" SnapsToDevicePixels="True">
-                <dxg:GridControl.Columns>
-                    <dxg:GridColumn x:Name="IsSelect" FieldName="Select" Header="选择" Width="35"/>
-                    <dxg:GridColumn x:Name="Send"  Header="发送" AllowEditing="True" Width="80">
-                        <dxg:GridColumn.CellTemplate>
-                            <DataTemplate>
-                                <dx:SimpleButton  Content="下发" IsEnabled="{Binding ElementName=OpenPort, Path=IsChecked}"
-                                                  Width="80" Command="local:MainWindow.SendCommand" Glyph="{dx:DXImage Image=Download_16x16.png}" VerticalAlignment="Center"/>
-                            </DataTemplate>
-                        </dxg:GridColumn.CellTemplate>
-                    </dxg:GridColumn>
-                    <dxg:GridColumn x:Name="Comment" FieldName="Comment" Header="名称" AllowEditing="True" Width="120"/>
-                    <dxg:GridColumn x:Name="Content"  FieldName="Content" Header="内容" AllowEditing="True"  Width="800">
-                        <dxg:GridColumn.EditSettings>
-                            <dxe:TextEditSettings MaskType="RegEx" Mask="([0-9a-fA-F]{2} ){0,}"/>
-                        </dxg:GridColumn.EditSettings>
-                    </dxg:GridColumn>
-
-                </dxg:GridControl.Columns>
-                <dxg:GridControl.View>
-                    <dxg:TableView 
-                        CellStyle="{StaticResource FocusedCellStyle}" Style="{StaticResource TableViewStyle}"
-                        FocusedRowHandle="{Binding SelectedRowIndex, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"
-                        RowIndicatorContentTemplate="{StaticResource rowIndicatorContentTemplate}"
-/>
-                </dxg:GridControl.View>
-
-            </dxg:GridControl>
-            <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.8*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <GroupBox Header="选项" Grid.Column="0" Height="200">
+        <dx:DXTabControl x:Name="TabControlTest" SelectionChanged="DXTabControl_SelectionChanged">
+            <dx:DXTabItem Header="高压板测试">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="1.35*"/>
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition/>
-                            <RowDefinition/>
-                            <RowDefinition/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Column="0" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="间隔时间(S)："></TextBlock>
-                        <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Left" Width="150">
-                            <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                                <Grid MaxWidth="420">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding ElementName=editor, Path=Minimum}" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" />
-                                    <ContentControl Template="{StaticResource rangeEditorPanel}" Grid.Column="1">
-                                        <dxe:TrackBarEdit x:Name="editor" SmallStep="1" LargeStep="5"
-                                                          Value="{Binding Interval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="10" TickFrequency="1" />
-                                    </ContentControl>
-                                    <TextBlock Text="{Binding ElementName=editor, Path=Maximum}" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" />
-                                </Grid>
-                                <TextBlock Foreground="Brown" Text="{Binding ElementName=editor, Path=Value}" HorizontalAlignment="Center" />
-                            </Grid>
-                        </StackPanel>
-                        <TextBlock Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="发送模式："></TextBlock>
-                        <ComboBox x:Name="sendComobox" Grid.Column="1" Grid.Row="1" SelectedIndex="{Binding ModeIndex, Mode=TwoWay}" VerticalAlignment="Center" HorizontalAlignment="Left" Height="25" Width="100"/>
-                        <dxe:CheckEdit x:Name="allSelect" Content="全选" IsChecked="{x:Null}" IsEnabled="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Select}" Grid.Column="0" Checked="allSelect_Checked" Unchecked="allSelect_Unchecked" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center" Width="50" />
-                        <StackPanel Grid.Column="1" Grid.Row="2" Height="30" VerticalAlignment="Center"  Orientation="Horizontal" HorizontalAlignment="Left" Width="150">
-                            <dx:SimpleButton x:Name="start" Command="local:MainWindow.OperateTest" CommandParameter="Start"
-                                             Visibility="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Start}" 
-                                             Content="开始" IsEnabled="{Binding ElementName=OpenPort, Path=IsChecked}" 
-                                             VerticalAlignment="Center" Glyph="{dx:DXImage Image=Next_16x16.png}" Width="75" Height="25" GlyphToContentOffset="0"/>
-                            <dx:SimpleButton x:Name="stop" Command="local:MainWindow.OperateTest" CommandParameter="Stop"
-                                             Visibility="{Binding IsStart, Converter={StaticResource rc}, ConverterParameter=Stop}"
-                                             Content="停止"  VerticalAlignment="Center" Glyph="{dx:DXImage Image=BORules_16x16.png}"
-                                             Width="75" Height="25" GlyphToContentOffset="0"/>
-                        </StackPanel>
-                        <dxe:ImageEdit ShowBorder="False" Grid.Column="2" Grid.RowSpan="3" Source="OUT.PNG" Stretch="Fill" ShowMenu="False"/>
+                        <GroupBox Header="遥测信息" Grid.Column="0" Margin="0,-3,5,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="电流值（mA）：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" IsReadOnly="True" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
 
+                                <TextBlock Text="电压值（mV）：" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" IsReadOnly="True" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="阻抗值（KΩ）：" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" IsReadOnly="True" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                
+                                <TextBlock Text="正绝缘度（KΩ）：" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" IsReadOnly="True" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                
+                                <TextBlock Text="负绝缘度（KΩ）：" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" IsReadOnly="True" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <dx:SimpleButton Command="local:MainWindow.SendMessageCommand" CommandParameter="ReadRemoteInfo" Content="读取" Grid.Row="5" Grid.Column="1" Width="70" Height="25" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=MoveUp_16x16.png}"></dx:SimpleButton>
+                                <CheckBox Content="自动读取" ToolTip="暂时无用" Grid.Row="5" Grid.Column="1" Margin="85,0,0,0"/>
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Header="校准信息" Grid.Column="1" Margin="5,-3,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="零点校准：" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" Grid.Row="0" Grid.Column="1" Text="{Binding ZeroValue}" PreviewTextInput="Flag_PreviewTextInput" InputMethod.IsInputMethodEnabled="False" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <dx:SimpleButton Content="校准" Command="local:MainWindow.SendMessageCommand" CommandParameter="adjustZero" Grid.Row="0" Grid.Column="2" Width="70" Height="25" Margin="20,0,0,0" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=IDE_16x16.png}"></dx:SimpleButton>
+
+                                <TextBlock Text="电流K值校准（mA）：" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" Grid.Row="1" Grid.Column="1" Text="{Binding CurrentValue}" PreviewTextInput="Flag_PreviewTextInput" InputMethod.IsInputMethodEnabled="False" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <dx:SimpleButton Content="校准" Command="local:MainWindow.SendMessageCommand" CommandParameter="adjustC" Grid.Row="1" Grid.Column="2" Width="70" Height="25" Margin="20,0,0,0" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=IDE_16x16.png}"></dx:SimpleButton>
+
+                                <TextBlock Text="电压K值校准（mV）：" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" Grid.Row="2" Grid.Column="1" Text="{Binding VoltageValue}" PreviewTextInput="Flag_PreviewTextInput" InputMethod.IsInputMethodEnabled="False" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <dx:SimpleButton Content="校准" Command="local:MainWindow.SendMessageCommand" CommandParameter="adjustV" Grid.Row="2" Grid.Column="2" Width="70" Height="25" Margin="20,0,0,0" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=IDE_16x16.png}"></dx:SimpleButton>
+
+                                <TextBlock Text="Pack ID校准：" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBox MinWidth="150" Grid.Row="3" Grid.Column="1" PreviewTextInput="Flag_PreviewTextInput" InputMethod.IsInputMethodEnabled="False"  Text="{Binding PackIDValue}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                <dx:SimpleButton Content="校准" Command="local:MainWindow.SendMessageCommand" CommandParameter="adjustID" Grid.Row="3" Grid.Column="2" Width="70" Height="25" Margin="20,0,0,0" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=IDE_16x16.png}"></dx:SimpleButton>
+                                <dxe:TextEdit x:Name="selfSendText" Grid.ColumnSpan="2" Grid.Row="4" Grid.RowSpan="2" Margin="10" TextWrapping="Wrap" MaskType="RegEx" Mask="([0-9a-fA-F]{2} ){0,}"/>
+                                <dx:SimpleButton Content="发送" IsEnabled="{Binding IsChecked, ElementName=OpenPort}" Grid.Row="4" Grid.RowSpan="2" Grid.Column="2" Width="70" Height="35" Margin="20,0,0,0" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=Forward_16x16.png}" Click="SimpleButton_Click"></dx:SimpleButton>
+                            </Grid>
+                        </GroupBox>
                     </Grid>
-                </GroupBox>
-                <GridSplitter Grid.Column="1" Style="{StaticResource VerGridSplitterStyle}"/>
-                <GroupBox x:Name="Status" Header="状态" Grid.Column="2" Height="200">
-                    <ListBox x:Name="StatusList" ItemsSource="{Binding ListStatus}"  Background="{DynamicResource {x:Static SystemColors.ActiveCaptionBrushKey}}"/>
-                </GroupBox>
-            </Grid>
-        </Grid>
+                    <GroupBox Header="报文管理" Grid.Row="2">
+                        <ListBox x:Name="MessageList" Margin="-5" ItemsSource="{Binding ListMessage}" Background="{DynamicResource {x:Static SystemColors.ActiveCaptionBrushKey}}" BorderBrush="Transparent">
+                            <ListBox.Resources>
+                                <Style TargetType="{x:Type ListBoxItem}">
+                                    <Setter Property="Template" Value="{StaticResource MessageList}">
+                                    </Setter>
+                                </Style>
+                            </ListBox.Resources>
+                        </ListBox>
+                    </GroupBox>                    
+                </Grid>
+            </dx:DXTabItem>
+            <dx:DXTabItem Header="自定义测试" ToolTip="加载自定义Case，亦可手动编辑测试">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <dxg:GridControl x:Name="TestGrid" IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}"
+						ItemsSource="{Binding TestTable}" ShowBorder="True" Grid.Row="0" AutoGenerateColumns="None" SnapsToDevicePixels="True">
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn x:Name="IsSelect" FieldName="Select" Header="选择" Width="35"/>
+                            <dxg:GridColumn x:Name="Send"  Header="发送" AllowEditing="True" Width="80">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <dx:SimpleButton  Content="下发" IsEnabled="{Binding IsChecked, ElementName=OpenPort}"
+											Width="80" Command="local:MainWindow.SendCommand" Glyph="{dx:DXImage Image=Download_16x16.png}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                            <dxg:GridColumn x:Name="Comment" FieldName="Comment" Header="名称" AllowEditing="True" Width="120"/>
+                            <dxg:GridColumn x:Name="Content"  FieldName="Content" Header="内容" AllowEditing="True"  Width="800">
+                                <dxg:GridColumn.EditSettings>
+                                    <dxe:TextEditSettings MaskType="RegEx" Mask="([0-9a-fA-F]{2} ){0,}"/>
+                                </dxg:GridColumn.EditSettings>
+                            </dxg:GridColumn>
+
+                        </dxg:GridControl.Columns>
+                        <dxg:GridControl.View>
+                            <dxg:TableView 
+								CellStyle="{StaticResource FocusedCellStyle}" Style="{StaticResource TableViewStyle}"
+								RowIndicatorContentTemplate="{StaticResource rowIndicatorContentTemplate}"
+/>
+                        </dxg:GridControl.View>
+
+                    </dxg:GridControl>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <GroupBox Header="选项" Grid.Column="0" Height="200">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Column="0" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="间隔时间(S)："/>
+                                <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Left" Width="150">
+                                    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                                        <Grid MaxWidth="420">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Minimum, ElementName=editor}" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" />
+                                            <ContentControl Template="{StaticResource rangeEditorPanel}" Grid.Column="1">
+                                                <dxe:TrackBarEdit x:Name="editor" SmallStep="1" LargeStep="5"
+													Value="{Binding Interval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="1" Maximum="10" TickFrequency="1" />
+                                            </ContentControl>
+                                            <TextBlock Text="{Binding Maximum, ElementName=editor}" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                        </Grid>
+                                        <TextBlock Foreground="Brown" Text="{Binding Value, ElementName=editor}" HorizontalAlignment="Center" />
+                                    </Grid>
+                                </StackPanel>
+                                <TextBlock Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Right"  Text="发送模式："/>
+                                <ComboBox x:Name="sendComobox" Grid.Column="1" Grid.Row="1" SelectedIndex="{Binding ModeIndex, Mode=TwoWay}" VerticalAlignment="Center" HorizontalAlignment="Left" Height="25" Width="100"/>
+                                <dxe:CheckEdit x:Name="allSelect" Content="全选" IsChecked="{x:Null}" IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}" Grid.Column="0" Checked="allSelect_Checked" Unchecked="allSelect_Unchecked" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Center" Width="50" />
+                                <StackPanel Grid.Column="1" Grid.Row="2" Height="30" VerticalAlignment="Center"  Orientation="Horizontal" HorizontalAlignment="Left" Width="150">
+                                    <dx:SimpleButton x:Name="start" Command="local:MainWindow.OperateTest" CommandParameter="Start"
+										Visibility="{Binding IsStart, ConverterParameter=Start, Converter={StaticResource rc}}" 
+										Content="开始" IsEnabled="{Binding IsChecked, ElementName=OpenPort}" 
+										VerticalAlignment="Center" Glyph="{dx:DXImage Image=Next_16x16.png}" Width="75" Height="25" GlyphToContentOffset="0"/>
+                                    <dx:SimpleButton x:Name="stop" Command="local:MainWindow.OperateTest" CommandParameter="Stop"
+										Visibility="{Binding IsStart, ConverterParameter=Stop, Converter={StaticResource rc}}"
+										Content="停止"  VerticalAlignment="Center" Glyph="{dx:DXImage Image=BORules_16x16.png}"
+										Width="75" Height="25" GlyphToContentOffset="0"/>
+                                </StackPanel>
+                                <dxe:ImageEdit ShowBorder="False" Grid.Column="2" Grid.RowSpan="3" Source="OUT.PNG" Stretch="Fill" ShowMenu="False"/>
+
+                            </Grid>
+                        </GroupBox>
+                        <GridSplitter Grid.Column="1" Style="{StaticResource VerGridSplitterStyle}"/>
+                        <GroupBox x:Name="Status" Header="状态" Grid.Column="2" Height="200">
+                            <ListBox x:Name="StatusList" ItemsSource="{Binding ListStatus}"  Background="{DynamicResource {x:Static SystemColors.ActiveCaptionBrushKey}}"/>
+                        </GroupBox>
+                    </Grid>
+                </Grid>
+            </dx:DXTabItem>
+        </dx:DXTabControl>     
     </DockPanel>
 </dx:DXWindow>
