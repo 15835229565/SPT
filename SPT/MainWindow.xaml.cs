@@ -386,7 +386,7 @@ namespace SPT
 
         private void Flag_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            Regex re = new Regex("[^0-9]");
+            Regex re = new Regex("[^0-9\\-]");
             e.Handled = re.IsMatch(e.Text);
         }
 
