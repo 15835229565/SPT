@@ -99,7 +99,7 @@
             <dx:SimpleButton x:Name="removeRowButton" Content="删除行" IsEnabled="{Binding IsStart, ConverterParameter=Select, Converter={StaticResource rc}}"
 				Glyph="{dx:DXImage Image=InsertCells_16x16.png}"
 				VerticalAlignment="Center" Margin="5,0,0,0" ToolTip="删除选中行"  Click="Remove_Click"/>
-            <ComboBox Width="100" x:Name="PackComoBox" Height="20"/>
+            <ComboBox Width="100" x:Name="PackComoBox" Height="20" SelectedIndex="{Binding SelectPackID}"/>
         </StackPanel>
         <dx:DXTabControl x:Name="TabControlTest" SelectionChanged="DXTabControl_SelectionChanged">
             <dx:DXTabItem Header="高压板测试">
@@ -145,7 +145,7 @@
                                 <TextBox x:Name="txtIsolationN" MinWidth="150" IsReadOnly="True" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                                 <TextBox x:Name="txtPackID" MinWidth="80" IsReadOnly="True" Grid.Row="5" Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                 <dx:SimpleButton Command="local:MainWindow.SendMessageCommand" CommandParameter="ReadRemoteInfo" Content="读取" Grid.Row="5" Grid.Column="1" Width="70" Height="25" HorizontalAlignment="Left" Glyph="{dx:DXImage Image=MoveUp_16x16.png}"></dx:SimpleButton>
-                                <CheckBox Content="自动读取" ToolTip="暂时无用" Grid.Row="5" Grid.Column="1" Margin="85,0,0,0"/>
+                                <CheckBox Content="自动读取" ToolTip="间隔1s读取一次" x:Name="autoRead" IsEnabled="{Binding IsChecked, ElementName=OpenPort}" Grid.Row="5" Grid.Column="1" Margin="85,0,0,0" Checked="autoRead_Checked" Unchecked="autoRead_Unchecked"/>
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="校准信息" Grid.Column="1" Margin="5,-3,0,0">

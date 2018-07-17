@@ -155,10 +155,10 @@ namespace SPT
                 }
             }
 
-            dataFrame.CHECKSUM = (ushort)(frameByte[7 + dataFrame.LENGTH] << 8 + frameByte[7 + dataFrame.LENGTH + 1]);
-            //校验有问题
-            //if (dataFrame.CHECKSUM != getFrameCRC(frameStr))
-            //    throw new Exception("Frame Checksum error");
+            dataFrame.CHECKSUM = (ushort)((frameByte[7 + dataFrame.LENGTH] << 8) + frameByte[7 + dataFrame.LENGTH + 1]);
+
+            if (dataFrame.CHECKSUM != getFrameCRC(frameByte))
+                throw new Exception("Frame Checksum error");
 
             if (frameByte[frameByte.Length - 1] != DataFrame.EOI)
                 throw new Exception("Format error(EOI)");
@@ -175,7 +175,6 @@ namespace SPT
         public byte[] ToBytes()
         {
             List<byte> frameList = new List<byte> { };
-            frameList.Add(DataFrame.SOI);
             frameList.Add(VER);
             frameList.Add(DataFrame.ADR);
             frameList.Add(DataFrame.CID1);
@@ -184,36 +183,25 @@ namespace SPT
             frameList.Add((byte)(LENGTH & 0x00FF));
             frameList.AddRange(INFO);
 
-            ushort checkSum = GetCheckSum();
+            ushort checkSum = GetCheckSum(frameList);
 
             frameList.Add((byte)(checkSum >> 8));
             frameList.Add((byte)(checkSum & 0x00FF));
 
+            frameList.Insert(0, DataFrame.SOI);
             frameList.Add(DataFrame.EOI);
 
             return frameList.ToArray();
 
         }
-        private ushort GetCheckSum()
+        private ushort GetCheckSum(List<byte> list)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{0:X2}", VER);
-            sb.AppendFormat("{0:X2}", ADR);
-            sb.AppendFormat("{0:X2}", CID1);
-            sb.AppendFormat("{0:X2}", CID2);
-            sb.AppendFormat("{0:X4}", LENGTH);
-
-            if (INFO != null)
-            {
-                foreach (byte data in INFO)
-                    sb.AppendFormat("{0:X2}", data);
-            }
-
             int crc_sum = 0;
-            foreach (char ch in sb.ToString())
+            foreach (var ch in list)
                 crc_sum += ch;
             crc_sum %= 65536;
-            crc_sum = (~crc_sum & 0x0FFFF) + 1;
+            crc_sum = ~crc_sum + 1;
+            crc_sum = crc_sum & 0x0FFFF;
             return (ushort)crc_sum;
         }
         /// <summary>
@@ -221,16 +209,17 @@ namespace SPT
         /// </summary>
         /// <param name="frameStr">接收到的数据Reponse</param>
         /// <returns>返回处理后的数据长度</returns>
-        private static int getFrameCRC(string frameStr)
+        private static ushort getFrameCRC(byte[] frameBytes)
         {
             int crc_sum = 0;
 
-            for (int i = 1; i < frameStr.Length - 5; i++)
-                crc_sum += frameStr[i];
+            for (int i = 1; i < frameBytes.Length - 3; i++)
+                crc_sum += frameBytes[i];
             crc_sum %= 65536;
-            crc_sum = (~crc_sum & 0x0FFFF) + 1;
+            crc_sum = ~crc_sum + 1;
+            ushort sum = (ushort)(crc_sum & 0x0FFFF);
 
-            return crc_sum;
+            return sum;
         }
 
         /// <summary>

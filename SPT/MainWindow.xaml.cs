@@ -17,6 +17,8 @@ using Microsoft.Win32;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.ComponentModel;
+using System.Windows.Threading;
+using System.Threading;
 
 namespace SPT
 {
@@ -183,9 +185,11 @@ namespace SPT
 
         private void DisposeData(byte[] bufData)
         {
-            string error = "";
-            this.Dispatcher.BeginInvoke(new Action(delegate()
+            this.Dispatcher.Invoke(new Action(delegate()
             {
+                string error = "";
+                bool isAdjust = false;
+
                 if (bufData[0] == DataFrame.SOI && bufData[bufData.Length - 1] == DataFrame.EOI)
                 {
                     try
@@ -217,7 +221,7 @@ namespace SPT
                             }
                             else
                             {
-                                DXMessageBox.Show("校准成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                                isAdjust = true;
                             }
 
                         }
@@ -227,8 +231,12 @@ namespace SPT
                         error = "数据校验或者处理异常！" + ex.Message;
                     }
                 }
-                }));            
-            vm.AddMessageToList(new MessageModel(Direction.Received, vm.GetMessage(bufData), error));
+                vm.AddMessageToList(new MessageModel(Direction.Received, vm.GetMessage(bufData), error));
+                if (isAdjust)
+                {
+                    DXMessageBox.Show("校准成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }));
         }
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
@@ -323,6 +331,7 @@ namespace SPT
         {
             vm.ClosePort();
             OpenPort.ToolTip = "打开串口";
+            autoRead_Unchecked(this, null);
         }
 
         /// <summary>
@@ -652,6 +661,24 @@ namespace SPT
         }
 
         #endregion
+
+        Timer autoReadTimer = null;
+        private void autoRead_Checked(object sender, RoutedEventArgs e)
+        {
+            autoReadTimer = new Timer(_ =>
+            {
+                ParaInfo[] paraList = new ParaInfo[] { new ParaInfo { Value = vm.SelectPackID, ByteNum = 0x01 } };
+                DataFrame requestFrame = new DataFrame((byte)vm.DataFrameVER, ProtocolCommand.CID2_TeleMeter, paraList);
+                requestFrame.Comment = string.Format("读取Pack{0}遥测信息", vm.SelectPackID);
+                vm.SendMessage(requestFrame.ToBytes());
+
+            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+
+        private void autoRead_Unchecked(object sender, RoutedEventArgs e)
+        {
+            autoReadTimer.Dispose();
+        }
 
     }
 }

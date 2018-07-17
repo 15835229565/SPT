@@ -179,6 +179,17 @@ namespace SPT
             }
         }
 
+        private int selectPackID = 0;
+        public int SelectPackID
+        {
+            get { return selectPackID; }
+            set
+            {
+                selectPackID = value;
+                OnPropertyChanged(new PropertyChangedEventArgs("SelectPackID"));
+            }
+        }
+
         /// <summary>
         /// 状态列表
         /// </summary>
