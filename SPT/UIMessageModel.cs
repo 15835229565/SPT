@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Data;
 using DevExpress.Mvvm;
+using System.Windows.Media;
 
 namespace SPT
 {
@@ -17,12 +18,13 @@ namespace SPT
     /// </summary>
     public class MessageModel : ViewModelBase
     {
-        public MessageModel(Direction _direction, string _content, string _arror = "")
+        public MessageModel(Direction _direction, string _content, string error = "")
         {
             MessageDirection = _direction;
             MessageContent = _content;
-            MessageArror = _arror;
             MessageTime = DateTime.Now;
+            MessageError = error;
+            ForeColor = MessageDirection == Direction.Received ? new SolidColorBrush(Colors.Green) : new SolidColorBrush(Colors.Gold);
         }
         /// <summary>
         /// 报文时间
@@ -34,6 +36,15 @@ namespace SPT
             set
             {
                 SetProperty<DateTime>(ref messageTime, value, "MessageTime");
+            }
+        }
+        private SolidColorBrush foreColor;
+        public SolidColorBrush ForeColor
+        {
+            get { return foreColor; }
+            set
+            {
+                SetProperty<SolidColorBrush>(ref foreColor, value, "ForeColor");
             }
         }
         /// <summary>
@@ -61,16 +72,16 @@ namespace SPT
             }
         }
         /// <summary>
-        /// 异常信息
+        /// 报文错误信息
         /// </summary>
-        private string messageArror;
-        public string MessageArror
+        private string messageError;
+        public string MessageError
         {
-            get { return messageArror; }
+            get { return messageError; }
             set
             {
-                SetProperty<string>(ref messageArror, value, "MessageArror");
+                SetProperty<string>(ref messageError, value, "MessageError");
             }
         }
-    }    
+    }
 }

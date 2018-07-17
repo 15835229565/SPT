@@ -44,12 +44,15 @@ namespace SPT
             PackComoBox.SelectedIndex = 0;
             baudComboBox.ItemsSource = Provider.arrBaudrate;
             sendComobox.ItemsSource = Provider.arrSendMode;
+            StatusList.ItemsSource = vm.ListStatus;
             MessageList.ItemsSource = vm.ListMessage;
             vm.FocusLastItem += AutoScroll;
+            vm.DisposeReceivedData += DisposeData;
             backgroundWorker.DoWork += BackgroundWorker_DoWork;
             backgroundWorker.RunWorkerCompleted += BackgroundWorker_RunWorkerCompleted;
         }
 
+        #region 请求反馈的形式
         /// <summary>
         /// 后台操作线程 DoWork
         /// </summary>             
@@ -106,12 +109,16 @@ namespace SPT
             }
 
             CommResult result = (CommResult)e.Result;
+            if (result == null)
+            {
+                return;
+            }
 
             if (result.RecieveStr == string.Empty)
             {
                 if (result.ErrMsg == string.Empty) //-接收超时
                 {
-                    DXMessageBox.Show("反馈超时！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    DXMessageBox.Show(result.RequestFrame.Comment + "反馈超时！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else  //-error
                 {
@@ -122,7 +129,7 @@ namespace SPT
             }
             try
             {
-                DataFrame rcvFrame = DataFrame.Parse(result.RecieveStr);
+                DataFrame rcvFrame = DataFrame.Parse(Encoding.ASCII.GetBytes(result.RecieveStr));
 
                 if (rcvFrame.CID2 != DataFrame.RTN_NoneErr)
                 {
@@ -148,29 +155,81 @@ namespace SPT
         /// <param name="response">回复消息体</param>
         private void TreatRcvFrame(DataFrame request, DataFrame response)
         {
-            switch (response.CID2)
+            int index = 0;
+            switch (request.CID2)
             {
                 case ProtocolCommand.CID2_TeleMeter:
+                    index += 1;
+                    txtPackID.Text = string.Format("Pack#{0}", response.GetByteData(index));
+                    index += 1;
+                    txtCurrent.Text = response.GetIntData(index, 4).ToString();
+                    index += 4;
+                    txtVoltage.Text = response.GetIntData(index, 4).ToString();
+                    index += 4;
+                    txtResistance.Text = response.GetIntData(index, 4).ToString();
+                    index += 4;
+                    txtIsolationP.Text = response.GetIntData(index, 4).ToString();
+                    index += 4;
+                    txtIsolationN.Text = response.GetIntData(index, 4).ToString();
                     break;
                 case ProtocolCommand.CID2_Adjust:
+                    DXMessageBox.Show("校准成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     break;
                 default:
                     break;
             }
         }
+        #endregion
 
-        private void TxdRequestFrame(DataFrame frame)
+        private void DisposeData(byte[] bufData)
         {
-            if (frame == null)
+            string error = "";
+            this.Dispatcher.BeginInvoke(new Action(delegate()
             {
-                return;
-            }
-            if (backgroundWorker.IsBusy == false)
-            {
-                backgroundWorker.RunWorkerAsync(frame);
-            }
-        }
+                if (bufData[0] == DataFrame.SOI && bufData[bufData.Length - 1] == DataFrame.EOI)
+                {
+                    try
+                    {
+                        DataFrame rcvFrame = DataFrame.Parse(bufData);
 
+                        if (rcvFrame.CID2 != DataFrame.RTN_NoneErr)
+                        {
+                            error = DataFrame.GetReturnMessage(rcvFrame.CID2);
+                        }
+                        else
+                        {
+                            int index = 0;
+
+                            if (rcvFrame.LENGTH > 0)
+                            {
+                                index += 1;
+                                txtPackID.Text = string.Format("Pack#{0}", rcvFrame.GetByteData(index));
+                                index += 1;
+                                txtCurrent.Text = rcvFrame.GetIntData(index, 4).ToString();
+                                index += 4;
+                                txtVoltage.Text = rcvFrame.GetIntData(index, 4).ToString();
+                                index += 4;
+                                txtResistance.Text = rcvFrame.GetIntData(index, 4).ToString();
+                                index += 4;
+                                txtIsolationP.Text = rcvFrame.GetIntData(index, 4).ToString();
+                                index += 4;
+                                txtIsolationN.Text = rcvFrame.GetIntData(index, 4).ToString();
+                            }
+                            else
+                            {
+                                DXMessageBox.Show("校准成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                            }
+
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        error = "数据校验或者处理异常！" + ex.Message;
+                    }
+                }
+                }));            
+            vm.AddMessageToList(new MessageModel(Direction.Received, vm.GetMessage(bufData), error));
+        }
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             portComboBox_DropDownOpened(this, null);
@@ -197,11 +256,39 @@ namespace SPT
             DXSplashScreen.Close();
         }
 
+        private void TxdRequestFrame(DataFrame frame)
+        {
+            if (frame == null)
+            {
+                return;
+            }
+            vm.SendMessage(frame.ToBytes());
+            //采用后台工作，请求反馈形式
+            //if (backgroundWorker.IsBusy == false)
+            //{
+            //    backgroundWorker.RunWorkerAsync(frame);
+            //}
+        }
         private void SimpleButton_Click(object sender, RoutedEventArgs e)
         {
-            vm.SendAndReceiveMessage(vm.GetSendBytes(selfSendText.Text.Trim()));
-        }
+            if (selfSendText.Text == string.Empty)
+            {
+                return;
+            }
+            try
+            {
+                vm.SendMessage(vm.GetSendBytes(selfSendText.Text.Trim()));
+            }
 
+            catch (TimeoutException)
+            {
+                DXMessageBox.Show("反馈超时！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        private void SimpleButton_Click_1(object sender, RoutedEventArgs e)
+        {
+            vm.ListMessage.Clear();
+        }
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             OpenPort_Unchecked(this, null);
@@ -302,7 +389,6 @@ namespace SPT
             Regex re = new Regex("[^0-9]");
             e.Handled = re.IsMatch(e.Text);
         }
-
 
         #region Command-打开Case
         /// <summary>

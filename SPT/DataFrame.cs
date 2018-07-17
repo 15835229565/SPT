@@ -98,6 +98,7 @@ namespace SPT
                     {
                         INFO.Add((byte)((para.Value >> 24) & 0x0FF));
                         INFO.Add((byte)((para.Value >> 16) & 0x0FF));
+                        INFO.Add((byte)((para.Value >> 8) & 0x0FF));
                     }
 
                     if (para.ByteNum == 2)
@@ -119,13 +120,11 @@ namespace SPT
         /// <param name="frameStr">接收的数据Reponse</param>
         /// <param name="frameStr">ASCII标识</param>
         /// <returns>返回处理后的数据（DataFrame类型数据）</returns>
-        public static DataFrame Parse(string frameStr)
+        public static DataFrame Parse(byte[] frameByte)
         {
             DataFrame dataFrame = new DataFrame();
 
             dataFrame.Direction = FrameDirection.Response;
-            //将接受的字符串转换成字节数组
-            var frameByte = Encoding.ASCII.GetBytes(frameStr);
 
             if (frameByte[0] != DataFrame.SOI)
                 throw new Exception("Format error(SOI)");
@@ -143,7 +142,7 @@ namespace SPT
             dataFrame.CID2 = frameByte[4]; ;
 
 
-            dataFrame.LENGTH = frameByte[5] << 8 + frameByte[6];
+            dataFrame.LENGTH = (frameByte[5] << 8) + frameByte[6];
             dataFrame.LENGTH &= 0xFFFF;
 
             if (dataFrame.LENGTH > 0)
@@ -161,7 +160,7 @@ namespace SPT
             //if (dataFrame.CHECKSUM != getFrameCRC(frameStr))
             //    throw new Exception("Frame Checksum error");
 
-            if (frameStr[frameByte.Length - 1] != DataFrame.EOI)
+            if (frameByte[frameByte.Length - 1] != DataFrame.EOI)
                 throw new Exception("Format error(EOI)");
 
             return dataFrame;
@@ -245,15 +244,15 @@ namespace SPT
 
             switch (RTN_code)
             {
-                case RTN_NoneErr: msg = (string)Application.Current.Resources["CSNormalCommunication"]; break;
-                case RTN_VersionErr: msg = (string)Application.Current.Resources["CSProtocolError"]; break;
-                case RTN_CheckSumErr: msg = (string)Application.Current.Resources["CSDataCheck"]; break;
-                case RTN_LenCheckErr: msg = (string)Application.Current.Resources["CSLengthCheck"]; break;
-                case RTN_CID2Err: msg = (string)Application.Current.Resources["CSUnsupportCommand"]; break;
-                case RTN_FormatErr: msg = (string)Application.Current.Resources["CSDataFormat"]; break;
-                case RTN_InvaidDataErr: msg = (string)Application.Current.Resources["CSDataSetted"]; break;
-                case RTN_AddrGroupErr: msg = (string)Application.Current.Resources["CSAddressNum"]; break;
-                case RTN_MemExternalErr: msg = (string)Application.Current.Resources["CSPeripheralStorage"]; break;
+                case RTN_NoneErr: msg = "通信正常响应"; break;
+                case RTN_VersionErr: msg = "协议版本错误"; break;
+                case RTN_CheckSumErr: msg = "数和校验错误"; break;
+                case RTN_LenCheckErr: msg = "长度校验错误"; break;
+                case RTN_CID2Err: msg = "命令错误不支持"; break;
+                case RTN_FormatErr: msg = "数据格式错误"; break;
+                case RTN_InvaidDataErr: msg = "设置数据无效"; break;
+                case RTN_AddrGroupErr: msg = "寻址组号错误"; break;
+                case RTN_MemExternalErr: msg = "存储外设错误"; break;
 
                 default:
                     if (RTN_code >= 0x80 && RTN_code <= 0xEF)

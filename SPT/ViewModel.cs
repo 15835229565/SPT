@@ -51,6 +51,10 @@ namespace SPT
             TestTable.Columns.Add("Comment", typeof(string));
             TestTable.Columns.Add("Content", typeof(string));
             ExcuteTimer.Tick += new EventHandler(ExcuteTimer_Tick);
+            //初始化SerialPort对象  
+            serialPort1.RtsEnable = true;//根据实际情况吧。  
+            //添加事件注册  
+            serialPort1.DataReceived += comm_DataReceived;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -60,6 +64,7 @@ namespace SPT
                 PropertyChanged(this, e);
         }
 
+        #region 串口变量
         private int baudRate = Properties.Settings.Default.BaudRate;
         public int BaudRate
         {
@@ -103,8 +108,7 @@ namespace SPT
                 OnPropertyChanged(new PropertyChangedEventArgs("Parity"));
             }
         }
-
-
+        #endregion
 
         private bool isStart = false;
         public bool IsStart
@@ -247,7 +251,7 @@ namespace SPT
             serialPort1.StopBits = Properties.Settings.Default.StopBits;
             serialPort1.Parity = Properties.Settings.Default.Parity;
             //超时设定为6秒
-            serialPort1.ReadTimeout = 6000;
+            serialPort1.ReadTimeout = 3000;
 
             if (serialPort1.IsOpen == false)
             {
@@ -267,36 +271,86 @@ namespace SPT
 
         public void ClosePort()
         {
+            Closing = true;
+            while (Listening) ;
+            //打开时点击，则关闭串口  
             serialPort1.Close();
+            Closing = false;
             EndTest(false);
+        }
+
+        private bool Listening = false;//是否没有执行完invoke相关操作  
+        private bool Closing = false;//是否正在关闭串口，执行Application.DoEvents，并阻止再次invoke 
+        private void comm_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            if (Closing) return;//如果正在关闭，忽略操作，直接返回，尽快的完成串口监听线程的一次循环  
+            try
+            {
+                Listening = true;//设置标记，说明我已经开始处理数据，一会儿要使用系统UI的。  
+                int n = serialPort1.BytesToRead;//先记录下来，避免某种原因，人为的原因，操作几次之间时间长，缓存不一致  
+                byte[] buf = new byte[n];//声明一个临时数组存储当前来的串口数据    
+                serialPort1.Read(buf, 0, n);//读取缓冲数据  
+                if (DisposeReceivedData != null)
+                {
+                    DisposeReceivedData(buf);
+                }
+            }
+            finally
+            {
+                Listening = false;//我用完了，ui可以关闭串口了。  
+            }
+        }
+
+        public void SendMessage(byte[] arrFrame)
+        {
+            if (serialPort1.IsOpen)
+            {
+                serialPort1.DiscardInBuffer();
+                serialPort1.Write(arrFrame, 0, arrFrame.Length);
+                AddMessageToList(new MessageModel(Direction.Send, GetMessage(arrFrame)));
+            }
         }
 
         public string SendAndReceiveMessage(byte[] arrFrame)
         {
-            string strReciveMsg = null;
-            if (serialPort1.IsOpen)
+            if (arrFrame == null)
             {
-                serialPort1.DiscardInBuffer();
-                string txdString = Encoding.ASCII.GetString(arrFrame);
-                serialPort1.Write(txdString);
-
-                AddMessageToList(new MessageModel(Direction.Send, GetMessage(arrFrame)));
-
-                strReciveMsg = serialPort1.ReadTo("\x0D");
-                if (strReciveMsg != string.Empty)
-                    strReciveMsg += "\x0D";
-
-                if (strReciveMsg == txdString) //-this is for RS485 Comm
+                return null;
+            }
+            string strReciveMsg = null;
+            try
+            {
+                if (serialPort1.IsOpen)
                 {
+                    serialPort1.DiscardInBuffer();
+                    string txdString = Encoding.ASCII.GetString(arrFrame);
+                    serialPort1.Write(txdString);
+
+                    AddMessageToList(new MessageModel(Direction.Send, GetMessage(arrFrame)));
+
                     strReciveMsg = serialPort1.ReadTo("\x0D");
                     if (strReciveMsg != string.Empty)
                         strReciveMsg += "\x0D";
+
+                    if (strReciveMsg == txdString) //-this is for RS485 Comm
+                    {
+                        strReciveMsg = serialPort1.ReadTo("\x0D");
+                        if (strReciveMsg != string.Empty)
+                            strReciveMsg += "\x0D";
+                    }
+                    AddMessageToList(new MessageModel(Direction.Received, GetMessage(Encoding.ASCII.GetBytes(strReciveMsg))));
                 }
-                AddMessageToList(new MessageModel(Direction.Send, GetMessage(Encoding.ASCII.GetBytes(strReciveMsg))));
             }
+            catch (Exception ex)
+            {
+
+                throw (ex);
+            }
+
             return strReciveMsg;
         }
-        public static string GetMessage(byte[] buffer)
+
+        public string GetMessage(byte[] buffer)
         {
             string message = string.Empty;
             foreach (var item in buffer)
@@ -307,19 +361,22 @@ namespace SPT
         }
         public void AddMessageToList(MessageModel mm)
         {
-            ListMessage.Add(mm);
-            int count = ListMessage.Count;
-            if (count > 1000)
-            {
-                for (int i = 0; i < count - 1000; i++)
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(delegate()
                 {
-                    ListMessage.RemoveAt(0);
-                }
-            }
-            if (FocusLastItem != null)
-            {
-                FocusLastItem(DataType.MessageText);
-            }
+                    ListMessage.Add(mm);
+                    int count = ListMessage.Count;
+                    if (count > 1000)
+                    {
+                        for (int i = 0; i < count - 1000; i++)
+                        {
+                            ListMessage.RemoveAt(0);
+                        }
+                    }
+                    if (FocusLastItem != null)
+                    {
+                        FocusLastItem(DataType.MessageText);
+                    }
+                }));
         }
 
         public string LoadCase(string filePath)
@@ -509,9 +566,13 @@ namespace SPT
             }
         }
         /// <summary>
-        /// 委托定义，用于控制界面元素
+        /// 委托定义，用于控制界面报文信息刷新
         /// </summary>
         public Action<DataType> FocusLastItem = null;
+        /// <summary>
+        /// 委托定义，用于处理接收的信息并且反馈到界面
+        /// </summary>
+        public Action<byte[]> DisposeReceivedData = null;
 
     }
     public enum DataType
