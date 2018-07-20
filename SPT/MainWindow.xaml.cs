@@ -245,19 +245,21 @@ namespace SPT
 
             if (Properties.Settings.Default.FilePath != string.Empty)
             {
-                if (vm.LoadCase(Properties.Settings.Default.FilePath) != null)
+                string strError = vm.LoadCase(Properties.Settings.Default.FilePath);
+                if (strError != null)
                 {
-                    DXMessageBox.Show("加载Case失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    DXMessageBox.Show("加载Case失败！" + strError, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             else
             {
-                string filePath = AppDomain.CurrentDomain.BaseDirectory + "\\" + "Case.xls";
+                string filePath = AppDomain.CurrentDomain.BaseDirectory + "\\" + "NewCase.csv";
                 if (File.Exists(filePath))
                 {
-                    if (vm.LoadCase(filePath) != null)
+                    string strError = vm.LoadCase(filePath);
+                    if (strError != null)
                     {
-                        DXMessageBox.Show("加载Case失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        DXMessageBox.Show("加载Case失败！" + strError, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -331,6 +333,7 @@ namespace SPT
         {
             vm.ClosePort();
             OpenPort.ToolTip = "打开串口";
+            autoRead.IsChecked = false;
             autoRead_Unchecked(this, null);
         }
 
@@ -419,14 +422,15 @@ namespace SPT
         private void LoadNewCase_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             OpenFileDialog op = new OpenFileDialog();
-            op.Filter = "Excel文件|*.xls|CSV文件|*.CSV";
+            op.Filter = "CSV文件|*.csv|Excel文件|*.xls";
             op.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;
             bool? result = op.ShowDialog();
             if (result == true)
             {
-                if (vm.LoadCase(op.FileName) != null)
+                string Error = vm.LoadCase(op.FileName);
+                if (Error != null)
                 {
-                    DXMessageBox.Show("加载Case失败！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    DXMessageBox.Show("加载Case失败！" + Error, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 else
                 {
@@ -677,7 +681,10 @@ namespace SPT
 
         private void autoRead_Unchecked(object sender, RoutedEventArgs e)
         {
-            autoReadTimer.Dispose();
+            if (autoReadTimer != null)
+            {
+                autoReadTimer.Dispose();
+            }
         }
 
     }
